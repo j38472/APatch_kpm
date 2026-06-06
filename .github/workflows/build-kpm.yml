@@ -25,6 +25,9 @@ jobs:
     env:
       TZ: UTC-8
 
+    outputs:
+      kpm_list: ${{ steps.list-kpms.outputs.kpm_list }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -48,14 +51,20 @@ jobs:
             fi
           done
 
-      - name: Upload artifact
-        if: success()
+      - name: Generate kpm list
+        id: list-kpms
+        run: |
+          kpms=$(ls target/*.kpm | xargs -n1 basename | jq -R -s -c 'split("\n")[:-1]')
+          echo "kpm_list=${kpms}" >> "${GITHUB_OUTPUT}"
+
+      - name: Upload target for matrix jobs
         uses: actions/upload-artifact@v7
         with:
-          path: "target/*.kpm"
+          name: all_kpms
+          path: target
 
       - name: Upload release
-        if: github.event.inputs.release == 'true' && success() && !cancelled()
+        if: github.event.inputs.release == 'true'
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -67,3 +76,25 @@ jobs:
           makeLatest: true
           omitBodyDuringUpdate: true
           replacesArtifacts: true
+
+  Upload-artifacts:
+    needs: Build-on-Ubuntu
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        kpm: ${{ fromJson(needs.Build-on-Ubuntu.outputs.kpm_list) }}
+
+    steps:
+      - name: Download target
+        uses: actions/download-artifact@v8
+        with:
+          name: all_kpms
+
+      - name: Upload ${{ matrix.kpm }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.kpm }}
+          path: ${{ matrix.kpm }}
+          archive: false
