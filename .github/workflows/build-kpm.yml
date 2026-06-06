@@ -9,13 +9,13 @@ on:
   workflow_dispatch:
     inputs:
       release:
-        description: 'Push a new release'
+        description: "Push a new release"
         required: false
-        default: 'false'
+        default: "false"
       version:
-        description: 'release version'
+        description: "release version"
         required: false
-        default: '2024051900'
+        default: "2024051900"
 
 jobs:
   Build-on-Ubuntu:
@@ -27,9 +27,9 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
-          submodules: 'recursive'
+          submodules: "recursive"
           fetch-depth: 1
 
       - name: Update system and install dependencies
@@ -50,22 +50,20 @@ jobs:
 
       - name: Upload artifact
         if: success()
-        uses: lzghzr/upload-artifact@405e6269d5b1feb22bf2a044deb7950596bed6da
+        uses: actions/upload-artifact@v7
         with:
           path: "target/*.kpm"
-          artifact-per-file: true
-          artifact-name-rule: ${name}
 
       - name: Upload release
         if: github.event.inputs.release == 'true' && success() && !cancelled()
-        uses: ncipollo/release-action@v1.14.0
+        uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           name: ${{ github.event.inputs.version }}
           tag: ${{ github.event.inputs.version }}
-          body: This release is built by github-action.
           artifacts: "target/*.kpm"
           allowUpdates: true
+          generateReleaseNotes: true
           makeLatest: true
           omitBodyDuringUpdate: true
           replacesArtifacts: true
